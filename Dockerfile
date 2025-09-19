@@ -1,23 +1,25 @@
 FROM python:3.9-slim
 
-# Устанавливаем системные зависимости, необходимые для pandas
+# Устанавливаем минимальные системные зависимости
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY . .
 
-# Сначала устанавливаем numpy отдельно, так как pandas зависит от него
-RUN pip install --no-cache-dir numpy==1.24.3
+# Сначала устанавливаем numpy отдельно (важно для pandas)
+RUN pip install --no-cache-dir numpy==1.21.6
 
-# Устанавливаем предварительно собранную версию pandas
-RUN pip install --no-cache-dir pandas==2.0.3 --only-binary=:all:
+# Затем устанавливаем облегченную версию pandas
+RUN pip install --no-cache-dir pandas==1.3.5 --no-build-isolation
 
-# Затем устанавливаем остальные зависимости
+# Копируем и устанавливаем остальные зависимости
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем основной код
+COPY . .
 
 CMD ["python", "bot.py"]
