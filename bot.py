@@ -7,11 +7,31 @@ import threading
 import schedule
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from flask import Flask
+import threading
+
+# Создаем простое Flask приложение для удовлетворения требований Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Telegram Bot is running!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=5000)
+
+# Запускаем Flask в отдельном потоке
+flask_thread = threading.Thread(target=run_flask, daemon=True)
+flask_thread.start()
 
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -19,7 +39,7 @@ logger = logging.getLogger(__name__)
 import os
 TOKEN = os.environ.get('TOKEN', '8417032154:AAHtZF3wJyVHnU8QL48NpxA8oFqe8gdPGnE')
 EXCEL_URL = os.environ.get('EXCEL_URL', 'https://miep.spb.ru/raspisanie/cise/%D0%A1%D0%9F%D0%9E%20%D1%81%D0%B5%D0%BD%D1%82%D1%8F%D0%B1%D1%80%D1%8C%202025.xlsx')
-CHECK_INTERVAL = 300
+CHECK_INTERVAL = 300  # Интервал проверки в секундах (5 минут)
 # ==============================
 
 # Файлы для хранения состояния
@@ -141,11 +161,44 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     filename="расписание.xlsx",
                     caption="Текущее расписание"
                 )
+            logger.info("Отправлено текущее расписание")
         else:
             await update.message.reply_text("Извините, не удалось загрузить расписание.")
     except Exception as e:
         logger.error(f"Ошибка при отправке расписания: {e}")
         await update.message.reply_text("Извините, произошла ошибка при загрузке расписания.")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /help"""
+    help_text = """
+🤖 Бот для отслеживания изменений в расписании
+
+Доступные команды:
+/start - Подписаться на уведомления
+/schedule - Получить текущее расписание
+/help - Показать эту справку
+
+Бот автоматически проверяет расписание каждые 5 минут и присылает уведомления об изменениях.
+    """
+    await update.message.reply_text(help_text)
+
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /status"""
+    try:
+        last_hash = load_last_hash()
+        users_count = len(context.application.bot_data.get('users', []))
+        
+        status_text = f"""
+📊 Статус бота:
+• Пользователей: {users_count}
+• Последняя проверка: {time.ctime() if last_hash else 'еще не было'}
+• Интервал проверки: {CHECK_INTERVAL} секунд
+• Статус: ✅ Работает
+        """
+        await update.message.reply_text(status_text)
+    except Exception as e:
+        logger.error(f"Ошибка в status_command: {e}")
+        await update.message.reply_text("❌ Ошибка при получении статуса")
 
 def run_scheduler(app):
     """Запускает планировщик в отдельном потоке"""
@@ -159,6 +212,8 @@ def main():
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("schedule", schedule_command))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("status", status_command))
     
     # Настраиваем периодическую проверку обновлений
     schedule.every(CHECK_INTERVAL).seconds.do(
@@ -173,4 +228,5 @@ def main():
     application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())

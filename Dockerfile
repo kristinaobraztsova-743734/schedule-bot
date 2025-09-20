@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-# Устанавливаем минимальные системные зависимости
+# Устанавливаем системные зависимости
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
@@ -9,10 +9,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Сначала устанавливаем numpy отдельно (важно для pandas)
+# Сначала устанавливаем numpy отдельно
 RUN pip install --no-cache-dir numpy==1.21.6
 
-# Затем устанавливаем облегченную версию pandas
+# Устанавливаем pandas без сборки из исходников
 RUN pip install --no-cache-dir pandas==1.3.5 --no-build-isolation
 
 # Копируем и устанавливаем остальные зависимости
@@ -22,4 +22,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем основной код
 COPY . .
 
+# Команда для запуска бота
 CMD ["python", "bot.py"]

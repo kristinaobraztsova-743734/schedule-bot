@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: schedule-bot
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: python bot.py
+    envVars:
+      - key: TOKEN
+        value: 8417032154:AAHtZF3wJyVHnU8QL48NpxA8oFqe8gdPGnE
+      - key: EXCEL_URL
+        value: https://miep.spb.ru/raspisanie/cise/%D0%A1%D0%9F%D0%9E%20%D1%81%D0%B5%D0%BD%D1%82%D1%8F%D0%B1%D1%80%D1%8C%202025.xlsx
